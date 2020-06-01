@@ -1,0 +1,119 @@
+BRIEF 2 DOCUMENTATION
+----------------------
+
+2D top down / Hit a Moving Target - BRIEF
+
+I worked on the code for the 2D top down player first and created 2 squares (Player and Enemy). The player can move
+freely around the scene but the enemy would chase the player at a certain distance and shoot at the player. It aims
+towards the player's coordinates and shoots towards that. If the player stays still it will get shot.
+
+It includes 3 scripts. One is the Enemy  behaviour, another is the player controller and last one is the projectile
+script.
+
+----------------
+EnemyController
+----------------
+public class EnemyController : MonoBehaviour {
+
+    public float speed;
+    public float stoppingDistance;
+    public float retreatDistance;
+
+    private float timeBtwnShots;
+    public float startTimeBtwnShots;
+
+    public GameObject projectile;
+    public Transform player;
+
+	// Use this for initialization
+	void Start () {
+        player = GameObject.FindGameObjectWithTag("Player").transform;
+
+        timeBtwnShots = startTimeBtwnShots;
+	}
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (Vector2.Distance(transform.position, player.position) > stoppingDistance)
+        {
+            transform.position = Vector2.MoveTowards(transform.position, player.position, speed * Time.deltaTime);
+        }
+        else if (Vector2.Distance(transform.position, player.position) < stoppingDistance && Vector2.Distance(transform.position, player.position) > retreatDistance)
+        {
+            transform.position = this.transform.position;
+        }
+        else if (Vector2.Distance(transform.position, player.position) < retreatDistance)
+        {
+            transform.position = Vector2.MoveTowards(transform.position, player.position, -speed * Time.deltaTime);
+        }
+
+        if (timeBtwnShots <= 0) {
+
+            Instantiate(projectile, transform.position, Quaternion.identity);
+            timeBtwnShots = startTimeBtwnShots;
+
+        } else {
+            timeBtwnShots -= Time.deltaTime;
+        }
+    }
+}
+
+-----------------
+PlayerController
+-----------------
+public class PlayerController : MonoBehaviour {
+
+    public float speed;
+    private Vector2 moveVelocity;
+    private Rigidbody2D rb;
+
+    void Start() {
+        rb = GetComponent<Rigidbody2D>();
+    }
+
+    void Update() {
+        Vector2 moveInput = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        Debug.LogFormat("x {0} y {1}", moveInput.x, moveInput.y);
+        moveVelocity = moveInput.normalized * speed;
+    }
+
+    private void FixedUpdate() {
+        rb.MovePosition(rb.position + moveVelocity * Time.fixedDeltaTime);
+    }
+}
+
+-----------
+Projectile
+-----------
+public class Projectile : MonoBehaviour {
+
+    public float speed;
+
+    private Transform player;
+    private Vector2 target;
+
+    void Start() {
+        player = GameObject.FindGameObjectWithTag("Player").transform;
+
+        target = new Vector2(player.position.x, player.position.y);
+    }
+
+    void Update() {
+        transform.position = Vector2.MoveTowards(transform.position, target, speed * Time.deltaTime);
+
+        if (transform.position.x == target.x && transform.position.y == target.y) {
+            DestroyProjectile();
+        }
+    }
+
+    void OnTriggerEnter2D(Collider2D other) {
+        if (other.CompareTag("Player")) {
+            DestroyProjectile();
+        }
+    }
+
+    void DestroyProjectile() {
+        Destroy(gameObject);
+    }
+}

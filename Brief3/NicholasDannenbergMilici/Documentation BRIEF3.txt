@@ -1,0 +1,212 @@
+BRIEF DOCUMENTATION
+--------------------
+
+Offline Ranking Table - BRIEF
+
+I first worked on the highscore table but bumped into multiple issues, the table wouldnt update, there would be no
+generated scores and you couldnt reset the table. I worked on the scoring system after multiple failed attempts to
+fix the highscore and bumped into another issue which was how to link the score system to the highscore table.
+
+I had help to fix the issues and now the table works as intended. There's a button that gives score once clicked on
+once satisfied, the player could press PUBLISH in order to update the highscores with their score. Reset if they
+want to start over again or END in order to view the highscore table.
+
+-------------
+ScoreManager
+-------------
+public class ScoreManager : MonoBehaviour {
+
+    public static int score;
+
+    Text text;
+
+    void Start()
+    {
+        text = GetComponent<Text>();
+
+        //score = 0;
+
+        score = PlayerPrefs.GetInt("CurrentPlayerScore");
+    }
+
+    void Update()
+    {
+        if (score < 0)
+            score = 0;
+
+        text.text = "" + score;
+    }
+
+    public static void AddPoints(int pointsToAdd)
+    {
+        score += pointsToAdd;
+        PlayerPrefs.SetInt("CurrentPlayerScore", score);
+    }
+
+    public static void Reset()
+    {
+        score = 0;
+        PlayerPrefs.SetInt("CurrentPlayerScore", score);
+    }
+
+}
+
+-----------
+ScoreAdder
+-----------
+public class ScoreAdder : MonoBehaviour
+{
+    public ScoreManager scoreManager;
+    public HighscoreTable highscoreTable;
+    public int pointsToAdd;
+
+    public void ClickedOn()
+    {
+        ScoreManager.AddPoints(pointsToAdd);
+    }
+
+    public void Publish()
+    {
+        highscoreTable.AddHighscoreEntry(ScoreManager.score, "YOU");
+    }
+
+    public void ResetScore()
+    {
+        ScoreManager.Reset();
+    }
+}
+
+---------------
+HighscoreTable
+---------------
+public class HighscoreTable : MonoBehaviour
+{
+    private Transform entryContainer;
+    public Transform entryTemplate;
+    private List<Transform> highscoreEntryTransformList;
+
+
+    private void Awake()
+    {
+        entryContainer = transform.Find("HighscoreContainer");
+
+        if (!PlayerPrefs.HasKey("highscoreTable"))
+        {
+            ResetTable();
+        }
+        else
+        {
+            //AddHighscoreEntry(10000, "CMK");
+            LoadTable();
+        }
+    }
+
+    void LoadTable()
+    { 
+        string jsonString = PlayerPrefs.GetString("highscoreTable");
+        Highscores highscores = JsonUtility.FromJson<Highscores>(jsonString);
+ 
+
+        //TABLE SORTING
+        for (int i = 0; i < highscores.highscoreEntryList.Count; i++)
+        {
+            for (int j = i + 1; j < highscores.highscoreEntryList.Count; j++)
+            {
+                if (highscores.highscoreEntryList[j].score > highscores.highscoreEntryList[i].score)
+                {
+                    //SWAP
+                    HighscoreEntry tmp = highscores.highscoreEntryList[i];
+                    highscores.highscoreEntryList[i] = highscores.highscoreEntryList[j];
+                    highscores.highscoreEntryList[j] = tmp;
+                }
+            }
+        }
+
+        foreach (Transform child in entryContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        highscoreEntryTransformList = new List<Transform>();
+        foreach (HighscoreEntry highscoreEntry in highscores.highscoreEntryList)
+        {
+            CreateHighscoreEntryTransform(highscoreEntry, entryContainer, highscoreEntryTransformList);
+        }
+    }
+
+
+    //PRODUCING THE MULTIPLIED TABLE WITH RANKING
+    private void CreateHighscoreEntryTransform(HighscoreEntry highscoreEntry, Transform container, List<Transform> transformList)
+    {
+        float templateHeight = 30f;
+        Transform entryTransform = Instantiate(entryTemplate, container);
+        RectTransform entryRectTransform = entryTransform.GetComponent<RectTransform>();
+        entryRectTransform.anchoredPosition = new Vector2(0, -templateHeight * transformList.Count);
+        entryTransform.gameObject.SetActive(true);
+
+        int rank = transformList.Count + 1;
+        string rankString;
+        switch (rank)
+        {
+            default:
+                rankString = rank + "TH"; break;
+
+            case 1: rankString = "1ST"; break;
+            case 2: rankString = "2ND"; break;
+            case 3: rankString = "3RD"; break;
+        }
+
+        entryTransform.Find("pos").GetComponent<Text>().text = rankString;
+
+        int score = highscoreEntry.score;
+
+        entryTransform.Find("score").GetComponent<Text>().text = score.ToString();
+
+        string name = highscoreEntry.name;
+        entryTransform.Find("user").GetComponent<Text>().text = name;
+
+        transformList.Add(entryTransform);
+    }
+
+    //CREATE A HIGHSCORE ENTRY WITH JSON
+    public void AddHighscoreEntry(int score, string name)
+    {
+        HighscoreEntry highscoreEntry = new HighscoreEntry { score = score, name = name };
+
+        //LOADING
+        string jsonString = PlayerPrefs.GetString("highscoreTable");
+        Highscores highscores = JsonUtility.FromJson<Highscores>(jsonString);
+
+        //ADD
+        highscores.highscoreEntryList.Add(highscoreEntry);
+
+        //SAVE
+        string json = JsonUtility.ToJson(highscores);
+        PlayerPrefs.SetString("highscoreTable", json);
+        PlayerPrefs.Save();
+        LoadTable();
+    }
+
+    private class Highscores
+    {
+        public List<HighscoreEntry> highscoreEntryList = new List<HighscoreEntry>();
+    }
+
+    public void ResetTable()
+    {
+        PlayerPrefs.DeleteKey("highscoreTable");
+        Highscores highscores = new Highscores();
+        string highscoresJson = JsonUtility.ToJson(highscores);
+        Debug.Log(highscoresJson);
+        PlayerPrefs.SetString("highscoreTable", highscoresJson);
+        LoadTable();
+    }
+
+    [System.Serializable]
+    private class HighscoreEntry
+    {
+        public int score;
+        public string name;
+    }
+
+}

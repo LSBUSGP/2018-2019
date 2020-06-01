@@ -1,0 +1,47 @@
+BRIEF 1 DOCUMENTATION
+---------------------
+
+Galaxy name generator - BRIEF
+
+Firstly, I created a button which creates random names to be generated. I initially had it so that it was pre set
+names that were paired together to create a full name in order to name the galaxy. However, it didnt meet the 
+brief requirement. I then made it so the script grab vowels and consonants from a list of strings and matches them
+together to make randomly generated names which are pronounceable.
+
+This both tackles unique strings and obscene words as it's practically impossible to get an obscene word but doesnt 
+fully prevent duplicate words.
+
+
+public class NameGeneratorThing : MonoBehaviour {
+
+    
+    public UnityEngine.UI.Text galaxyname;
+
+   public void NameGenerator()
+    {
+	//Selects a random range between a word within 3-10
+        galaxyname.text = GalaxyNames(Random.Range(3,10));
+    }
+    static string GalaxyNames(int length)
+    {
+        const string vowels = "aeiou";
+        const string consonants = "bcdfghjklmnpqrstvwxyz";
+
+        var rnd = new System.Random();
+
+        length = length % 2 == 0 ? length : length + 1;
+
+        var name = new char[length];
+
+        for (var i = 0; i < length; i += 2)
+        {
+            name[i] = vowels[rnd.Next(vowels.Length)];
+            name[i + 1] = consonants[rnd.Next(consonants.Length)];
+        }
+
+        return new string(name);
+    }
+
+
+
+
